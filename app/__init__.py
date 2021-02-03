@@ -18,8 +18,6 @@ app.config.from_object(Config)
 db=SQLAlchemy(app)
 migrate=Migrate(app, db)
 
-from app import routes
-
 from app.auth.views import auth_blueprint
 app.register_blueprint(auth_blueprint)
 from app.api.views import api_blueprint

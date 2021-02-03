@@ -2,7 +2,7 @@ import os
 
 class Config(object):
     SECRET_KEY=""
-    SQLALCHEMY_DATABASE_URL='postgresql://kibe:denis@localhost/ticket_app'
+    SQLALCHEMY_DATABASE_URL='postgresql://kibe:denis@localhost/bid_app'
     CSRF_ENABLED=True
     DEBUG = False
     UPLOAD_FOLDER='app/statict/uploads/'
