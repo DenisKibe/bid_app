@@ -3,6 +3,9 @@ from config import Config
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import os, logging
+from flask_jwt_extended import JWTManager
+from flask_restful import Api
+from app.routes import initialize_routes
 
 app=Flask(__name__)
 app.config.from_object(Config)
@@ -18,7 +21,10 @@ app.config.from_object(Config)
 db=SQLAlchemy(app)
 migrate=Migrate(app, db)
 
-from app.auth.views import auth_blueprint
-app.register_blueprint(auth_blueprint)
-from app.api.views import api_blueprint
-app.register_blueprint(api_blueprint)
+#init jwt
+jwt = JWTManager(app)
+
+#init Api
+api = Api(app)
+
+initialize_routes(api)
