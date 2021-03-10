@@ -1,8 +1,6 @@
-import flask, jwt,datetime,random, string
-from flask import json, Response, jsonify, make_response
-from app import db, app
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Column, Integer, String, Float,Text, TIMESTAMP,text, ForeignKey, Boolean
+import random, string
+from app import db
+from sqlalchemy import text, ForeignKey
 from sqlalchemy.orm import relationship
 
 def gen_id(x):
@@ -11,12 +9,12 @@ def gen_id(x):
 class OutletModel(db.Model):
     __tablename__='outlet'
     
-    id = db.Column(db.String(20), primary_key=True, nullable=False, unique=True, autoincrement=False, server_default=gen_id(16))
+    id = db.Column(db.String(20), primary_key=True, nullable=False, unique=True, autoincrement=False, default=gen_id(16))
     name =db.Column(db.String(50), nullable=False,unique=True)
     description = db.Column(db.Text)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP")) 
-    relationship("ProductsModel",backref='outlet')
-    relationship("UserModel",backref='outlet')
+    producter=relationship("ProductsModel",backref='outlet')
+    users=relationship("UserModel",backref='outlet')
     
     def __init__(self,name,description):
         self.name = name
@@ -28,7 +26,7 @@ class OutletModel(db.Model):
 class ProductsModel(db.Model):
     __tablename__='product'
     
-    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True, autoincrement=False,server_default=gen_id(16))
+    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True, autoincrement=False,default=gen_id(16))
     name = db.Column(db.String(50), nullable=False)
     description = db.Column(db.Text)
     buying_price = db.Column(db.Integer,nullable=False)
@@ -38,8 +36,8 @@ class ProductsModel(db.Model):
     outlet_id = db.Column(db.String(20),ForeignKey('outlet.id'),nullable=False)
     expiry_date = db.Column(db.DateTime)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    updated_on = db.Column(db.DateTome,onupdate=text("CURRENT_TIMESTAMP"))
-    relationship("BidModel",backref='product')
+    updated_on = db.Column(db.DateTime,server_default=text("CURRENT_TIMESTAMP"),server_onupdate=text("CURRENT_TIMESTAMP"))
+    bidder=relationship("BidModel",backref='product')
     
     def __init__(self,name,description,buying_price,state,category_id,image_url,outlet_id,expiry_date):
         self.name = name
@@ -57,7 +55,7 @@ class ProductsModel(db.Model):
 class ProductCategoryModel(db.Model):
     __tablename__='product_category'
     
-    id = db.Column(db.String(20),primary_key=True,nullable=False,unique=True,autoincrement=False,server_default=gen_id(16))
+    id = db.Column(db.String(20),primary_key=True,nullable=False,unique=True,autoincrement=False,default=gen_id(16))
     name = db.Column(db.String(50),nullable=False)
     description = db.Column(db.Text)
     created_on =  db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))
@@ -73,19 +71,19 @@ class ProductCategoryModel(db.Model):
 class UserModel(db.Model):
     __tablename__='user'
     
-    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False,server_default=gen_id(16))
+    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False,default=gen_id(16))
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     password = db.Column(db.String(200),nullable=False)
     email = db.Column(db.String(100), nullable=False)
-    role = db.Column(db.String(10), nullable=False, server_default='User')
+    role = db.Column(db.String(10), nullable=False, server_default='Customer')
     outlet_id = db.Column(db.String(20),ForeignKey('outlet.id'),nullable=False)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    updated_on = db.Column(db.DateTime, onupdate=text("CURRENT_TIMESTAMP"))
-    relationship("AccountDetailsModel",backref='user')
-    relationship("walletModel",backref='user')
-    relationship("BidModel",backref='user')
-    relationship("CodeModel",backref='user')
+    updated_on = db.Column(db.DateTime,server_default=text("CURRENT_TIMESTAMP"), server_onupdate=text("CURRENT_TIMESTAMP"))
+    acconter=relationship("AccountDetailsModel",backref='user')
+    wallets=relationship("WalletModel",backref='user')
+    bidder=relationship("BidModel",backref='user')
+    coder=relationship("CodeModel",backref='user')
     
     def __init__(self,first_name,last_name,password,email,outlet_id):
         self.first_name = first_name
@@ -100,7 +98,7 @@ class UserModel(db.Model):
     
 class AccountDetailsModel(db.Model):
     __tablename__='account_detail'
-    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False,server_default=gen_id(16))
+    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False,default=gen_id(16))
     user_id = db.Column(db.String(20),ForeignKey('user.id'),nullable=False)
     nickname = db.Column(db.String(50),nullable=True)
     middle_name = db.Column(db.String(50),nullable=True)
@@ -110,11 +108,11 @@ class AccountDetailsModel(db.Model):
     gender = db.Column(db.String(10),nullable=True)
     profile_pic_url = db.Column(db.String(100),nullable=True)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    updated_on = db.Column(db.DateTime, onupdate=text("CURRENT_TIMESTAMP"))
-    is_email_verified = db.Column(db.Boolean,server_default='False')
-    is_phone_verified = db.Column(db.Boolean,server_default='False')
+    updated_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"), server_onupdate=text("CURRENT_TIMESTAMP"))
+    is_email_verified = db.Column(db.Boolean,default='False')
+    is_phone_verified = db.Column(db.Boolean,default='False')
     
-    def __init__(self,user_id,nickname,middle_name,phone_number,id_number,dob,gender,profile_pic_url,is_email_verified,is_phone_verified):
+    def __init__(self,user_id,nickname,middle_name,phone_number,id_number,dob,gender,profile_pic_url):
         self.user_id =  user_id
         self.nickname = nickname
         self.middle_name = middle_name
@@ -123,8 +121,7 @@ class AccountDetailsModel(db.Model):
         self.dob = dob
         self.gender = gender
         self.profile_pic_url = profile_pic_url
-        self.is_email_verified = is_email_verified
-        self.is_phone_verified = is_phone_verified
+        
         
     def __repr__(self):
         return self.id
@@ -132,16 +129,15 @@ class AccountDetailsModel(db.Model):
 class WalletModel(db.Model):
     __tablename__='wallet'
     
-    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False,server_default=gen_id(16))
+    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False,default=gen_id(16))
     user_id = db.Column(db.String(20),ForeignKey('user.id'),nullable=False)
-    balance = db.Column(db.Integer,server_default='0')
-    bonus = db.Column(db.Integer,server_default='0')
-    updated_on = db.Column(db.DateTime,onupdate=text("CURRENT_TIMESTAMP"))
+    balance = db.Column(db.Integer,default='0')
+    bonus = db.Column(db.Integer,default='0')
+    updated_on = db.Column(db.DateTime,server_default=text("CURRENT_TIMESTAMP"),server_onupdate=text("CURRENT_TIMESTAMP"))
     
-    def __init__(self,user_id,balance,bonus):
+    def __init__(self,user_id):
       self.user_id = user_id
-      self.balance = balance
-      self.bonus = bonus
+      
       
     def __repr__(self):
         return self.id
@@ -149,12 +145,12 @@ class WalletModel(db.Model):
 class BidModel(db.Model):
     __tablename__='bid'
     
-    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False, server_default=gen_id(16))
+    id = db.Column(db.String(20), primary_key=True, nullable=False,unique=True,autoincrement=False, default=gen_id(16))
     user_id = db.Column(db.String(20),ForeignKey('user.id'),nullable=False)
     product_id = db.Column(db.String(20),ForeignKey('product.id'),nullable=False)
     bid_amount = db.Column(db.Integer, nullable=False)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    updated_on = db.Column(db.DateTime, onupdate=text("CURRENT_TIMESTAMP"))
+    updated_on = db.Column(db.DateTime,server_default=text("CURRENT_TIMESTAMP"), server_onupdate=text("CURRENT_TIMESTAMP"))
     
     def __init__(self,user_id,product_id,bid_amount):
       self.user_id = user_id
@@ -164,12 +160,12 @@ class BidModel(db.Model):
     def __repr__(self):
         return self.id
 
-class codeModel(db.Model):
+class CodeModel(db.Model):
     __tablename__='code' 
     
     id = db.Column(db.Integer, autoincrement=True, primary_key=True,nullable=False)
     user_id = db.Column(db.String(20), ForeignKey('user.id'),nullable=False)
-    code = db.Column(db.String(6),nullable=False, server_default=gen_id(6))
+    code = db.Column(db.String(6),nullable=False, default=gen_id(6))
     field = db.Column(db.String(100),nullable=False)
     expiry_time = db.Column(db.Time)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))

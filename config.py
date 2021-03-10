@@ -5,7 +5,7 @@ class Config(object):
     SQLALCHEMY_DATABASE_URI='postgresql://kibe:denis@localhost/bid_app'
     CSRF_ENABLED=True
     DEBUG = False
-    UPLOAD_FOLDER='app/statict/uploads/'
+    UPLOAD_FOLDER='app/images/'
     ALLOWED_EXTENSIONS={'png','jpg','jpeg','gif'}
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     JWT_SECRET_KEY = '\x0b\x9eoR\x0b\xc5\x9b8>\xee\xbd\x13\x85\x11"\xc6\xa2\x03_\x8f\xa1\xe8\x12\xea!\xd5\xcd\xf8]>6p'
