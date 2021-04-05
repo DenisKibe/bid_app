@@ -6,6 +6,7 @@ import os, logging
 from flask_jwt_extended import JWTManager
 from flask_restful import Api
 from flask_cors import CORS
+from flask_mail import Mail
 
 
 app=Flask(__name__)
@@ -21,7 +22,8 @@ app.config.from_object(Config)
 #db init
 db=SQLAlchemy(app)
 migrate=Migrate(app, db)
-
+#init Mail
+mail = Mail(app)
 #init CORS
 CORS(app)
 

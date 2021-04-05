@@ -1,11 +1,14 @@
-from flask import json, request, Response, url_for
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from flask import json, request, Response, url_for, render_template
+from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
 from werkzeug.utils import secure_filename
-from app.models import BidModel, UserModel, ProductsModel,ProductCategoryModel,AccountDetailsModel,WalletModel, gen_id
+from app.models import BidModel, UserModel, ProductsModel,ProductCategoryModel,AccountDetailsModel,WalletModel, gen_id, CodeModel
 from flask_restful import Resource
 import datetime,os
 from app.api.auth import restricted,g
 from app import db,app
+from app.email.mail_services import send_email
+from jwt import ExpiredSignatureError
+
 
 class ProductsAPI(Resource):
     @restricted(level='Outlet')
@@ -13,11 +16,15 @@ class ProductsAPI(Resource):
         responseBody=[]
         try:
             category = ProductCategoryModel.query.filter_by(name = request.args.get('category')).first()
-            products = ProductsModel.query.filter_by(outlet_id = g.user.outlet_id,state = request.args.get('state'), category_id = category.id).order_by(ProductsModel.updated_on.desc())
-            print(os.getcwd())
+            if request.args.get('state') == 'ACTIVE':
+                products = ProductsModel.query.filter_by(outlet_id = g.user.outlet_id, category_id = category.id).filter(ProductsModel.expiry_date > datetime.datetime.now()).order_by(ProductsModel.updated_on.desc())
+            else:
+                products = ProductsModel.query.filter_by(outlet_id = g.user.outlet_id, category_id = category.id).filter(ProductsModel.expiry_date < datetime.datetime.now()).order_by(ProductsModel.updated_on.desc())
+            
             #create an obj for each result
             for product in products:
                 respObj = {
+                    'id' : product.id,
                     'name' : product.name,
                     'description' : product.description,
                     'image_url' : product.image_url,
@@ -82,6 +89,7 @@ class ProductsAPI(Resource):
             #commit changes
             db.session.add(new_product)
             db.session.commit()
+            
             
             respObj = {
                 'status':'success',
@@ -314,7 +322,7 @@ class BidAPI(Resource):
             
             return Response(json.dumps(respObj), mimetype='application/json',status=400)
         
-    @restricted(level='Customer')
+    @restricted(level='Outlet')
     def get(self):
         try:
             bids = BidModel.query.filter_by(product_id = request.args.get('auctionId')).order_by(BidModel.bid_amount.desc()).limit(5)
@@ -337,6 +345,101 @@ class BidAPI(Resource):
                 'message' : 'Some error occured while handling this request. Try again later.'
             }
             
-            return Response(json.dumps(respObj), mimetype='application/json',status=200)
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
         
-class 
+class AccountExtrasAPI(Resource):
+    @restricted(level = 'Customer')
+    def post(self):
+        post_data = request.get_json()
+        
+        try:
+            bids = BidModel.query.filter_by(product_id = post_data.auctionId, user_id = g.user.id).all()
+            
+            responseBody = []
+            for bid in bids:
+                respObjs = {
+                    'id' : bid.id,
+                    'amount' : bid.bid_amount
+                }
+                responseBody.append(respObjs)
+                
+            respObj = {
+                'userName' : g.user.first_name + ' '+g.user.last_name,
+                'totalBids' : bids.count(),
+                'bids' : responseBody
+            }
+            print(respObj)
+            
+            return Response(json.dumps(respObj), mimetype='application/json',status=200)
+        except Exception as e:
+            print(e)
+            respObj = {
+                'status' : 'failed',
+                'message' : 'Some error occured while handling the request. Please try again later.'
+            }
+            
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+    
+    @restricted(level = 'Outlet')
+    def get(self):
+            return Response(json.dumps({}), mimetype='application/json',status=200)
+        
+class SendEmaiLAPI(Resource):
+    @restricted(level = 'Outlet')
+    def post(self):
+        try:
+            post_data = request.get_json()
+           
+            send_email(post_data.get('subject'),
+                       sender='noreply@test.com',
+                       recipients=[post_data.get('emailAddress')],
+                       text_body=render_template('support_email.txt', message=post_data.get('emailBody')),
+                       html_body=render_template('support_email.html', message=post_data.get('emailBody'))
+                    )
+            respObj = {
+                'status' : 'success',
+                'message' : 'Email sent successifully. Check your Email for further communications.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=200)
+        except Exception as e:
+            
+            respObj = {
+                'status' : 'failed',
+                'message' : 'An error occured while handling this request. Please try again later.'
+            }
+            
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+        
+class VerifyEmailAPI(Resource):
+    @restricted(level = 'Outlet')
+    def get(self):
+        try:
+            payload = decode_token(request.args.get('xc'))
+            
+            code = CodeModel.query.filter_by(user_id = payload['sub'], code = request.args.get('ud'), field = 'Email').first()
+            if not code:
+                raise ExpiredSignatureError
+            
+            account = AccountDetailsModel.query.filter_by(user_id = payload['sub']).first()
+            account.is_email_verified = True
+            db.session.commit()
+            
+            respObj = {
+                'status' : 'success',
+                'message' : 'Email verified successfully'
+            }
+            
+            return Response(json.dumps(respObj), mimetype='application/json',status=200)
+        except ExpiredSignatureError:
+            respObj = {
+                'status' : 'failed',
+                'message' : 'Activation link has expired. Please get a new Link'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=401)
+        except Exception as e:
+            
+            respObj = {
+                'status' : 'failed',
+                'message' : 'An Error occured while processing this request. Please try again later.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)

@@ -1,0 +1,9 @@
+Dear {{ name }},
+
+Welcome to {{ appName }}, kindly confirm your email by clicking the following link:
+
+{{ url }}
+
+Kind Regards,
+{{ appName }} Account Setup Team.
+support@test.com

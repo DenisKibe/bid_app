@@ -167,7 +167,7 @@ class CodeModel(db.Model):
     user_id = db.Column(db.String(20), ForeignKey('user.id'),nullable=False)
     code = db.Column(db.String(6),nullable=False, default=gen_id(6))
     field = db.Column(db.String(100),nullable=False)
-    expiry_time = db.Column(db.Time)
+    expiry_time = db.Column(db.DateTime)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))
     
     def __init__(self,user_id,field,expiry_time):

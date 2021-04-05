@@ -1,5 +1,5 @@
-from app.api.auth import SignupAPI, GetTokenAPI
-from app.api.views import ProductsAPI, AccountDetailsAPI,UploadImageAPI,WalletDetailsAPI,BidAPI
+from app.api.auth import SignupAPI, GetTokenAPI,EmailVerificationAPI,ResetPasswordAPI
+from app.api.views import ProductsAPI, AccountDetailsAPI,UploadImageAPI,WalletDetailsAPI,BidAPI,AccountExtrasAPI,SendEmaiLAPI,VerifyEmailAPI
 
 def initialize_routes(api):
     api.add_resource(SignupAPI, '/api/auth/registerUser')
@@ -9,3 +9,8 @@ def initialize_routes(api):
     api.add_resource(UploadImageAPI, '/api/uploadPic')
     api.add_resource(WalletDetailsAPI, '/api/wallet')
     api.add_resource(BidAPI,'/api/bid')
+    api.add_resource(AccountExtrasAPI, '/api/account')
+    api.add_resource(SendEmaiLAPI,'/api/sendemail')
+    api.add_resource(EmailVerificationAPI,'/api/sendEmailVerification')
+    api.add_resource(VerifyEmailAPI,'/api/verifyEmail')
+    api.add_resource(ResetPasswordAPI,'/api/changePassword')
