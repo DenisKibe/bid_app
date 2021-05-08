@@ -1,12 +1,13 @@
 from flask import json, request, Response, url_for, render_template
 from flask_jwt_extended import jwt_required, get_jwt_identity, decode_token
+import requests
 from werkzeug.utils import secure_filename
 from app.models import BidModel, UserModel, ProductsModel,ProductCategoryModel,AccountDetailsModel,WalletModel, gen_id, CodeModel
 from flask_restful import Resource
 import datetime,os
 from app.api.auth import restricted,g
 from app import db,app
-from app.email.mail_services import send_email
+from app.services.mail_services import send_email
 from jwt import ExpiredSignatureError
 
 
@@ -416,7 +417,7 @@ class VerifyEmailAPI(Resource):
         try:
             payload = decode_token(request.args.get('xc'))
             
-            code = CodeModel.query.filter_by(user_id = payload['sub'], code = request.args.get('ud'), field = 'Email').first()
+            code = CodeModel.query.filter_by(user_id = payload['sub'], code = request.args.get('ud'), field = 'Email').filter(CodeModel.expiry_time > datetime.datetime.now()).first()
             if not code:
                 raise ExpiredSignatureError
             
@@ -443,3 +444,90 @@ class VerifyEmailAPI(Resource):
                 'message' : 'An Error occured while processing this request. Please try again later.'
             }
             return Response(json.dumps(respObj), mimetype='application/json',status=400)
+
+class ResetForgotPasswordAPI(Resource):
+    @restricted(level = 'Outlet')
+    def post(self):
+        post_data = request.get_json()
+
+        try:
+            user = UserModel.query.filter_by(email = post_data.get('email')).first()
+            if not user:
+                raise NameError
+
+            code = CodeModel.query.filter_by(user_id = user.id, code = post_data.get('code'), field = 'Password').filter(CodeModel.expiry_time > datetime.datetime.now()).first()
+            if not code:
+                raise ExpiredSignatureError
+
+            user.password = post_data.password
+
+            db.session.commit()
+
+            respObj = {
+                'status' : 'Success',
+                'message' : 'Password change successfully, You can now login.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=200)
+        except NameError:
+            respObj ={
+                'status':'failed',
+                'message' : 'Invalid email'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+
+        except ExpiredSignatureError:
+            respObj ={
+                'status':'failed',
+                'message' : 'verification code expired.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=403)
+
+        except Exception as e:
+            
+            respObj = {
+                'status' : 'failed',
+                'message' : 'An Error occured while processing this request. Please try again later.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+
+class VerifySmsCode(Resource):
+    @restricted(level = 'Customer')
+    def post(self):
+        post_data = request.get_json()
+
+        try:
+            code = CodeModel.query.filter_by(user_id = g.user.id, code = post_data.get('code'), field = 'Phonenumber').filter(CodeModel.expiry_time > datetime.datetime.now()).first()
+
+            if not code:
+                raise ExpiredSignatureError
+
+            user_account = AccountDetailsModel.query.filter(user_id = g.user.id).first()
+            user_account.is_phone_verified = True
+
+            db.session.commit()
+
+            respObj = {
+                'status' : 'success',
+                'message' : 'Your phone number verification is successful.'
+            }
+
+            return Response(json.dumps(respObj), mimetype='application/json',status=200)
+
+        except ExpiredSignatureError:
+            respObj = {
+                'status' : 'failed',
+                'message' : 'The verification code is expired.'
+            }
+
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+
+        except Exception as e:
+            respObj = {
+                'status' : 'failed',
+                'message' : 'An Error occured while processing this request. Please try again later.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+
+
+
+            

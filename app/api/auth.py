@@ -1,13 +1,15 @@
 from flask import request, g, Response, json, render_template
 from flask_jwt_extended import create_access_token, jwt_required,get_jwt_identity
 from flask_jwt_extended.view_decorators import verify_jwt_in_request
+import requests
 from app.models import AccountDetailsModel, UserModel, WalletModel, CodeModel
 from flask_restful import Resource
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 import datetime
 from functools import wraps
-from app.email.mail_services import send_email
+from app.services.mail_services import send_email
+from app.services.bulkSms_service import SendSms
 
 
 #flask decorator to control privilages
@@ -222,7 +224,12 @@ class ForgetPasswordAPI(Resource):
                 }
                 return Response(json.dumps(respObj), mimetype='application/json',status=200)
 
-        return #something
+        except Exception as e:
+            respObj = {
+                'status' : 'failed',
+                'message' : 'An error occured while handling this request. Please try again later.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
     
 class EmailVerificationAPI(Resource):
     @restricted(level = 'Customer')
@@ -278,9 +285,52 @@ class EmailVerificationAPI(Resource):
             return Response(json.dumps(respObj), mimetype='application/json',status=400)
     
 class PhoneVerificationAPI(Resource):
-    def post(self):
-        #somthing goes here
-        return #something
+    @restricted(level = 'Customer')
+    def get(self):
+        try:
+            code = CodeModel.query.filter_by(user_id = g.user.id, field = "Phonenumber").filter(CodeModel.expiry_time > datetime.datetime.now()).first()
+            
+            if not code:
+                new_code = CodeModel(
+                    user_id= g.user.id,
+                    field = 'Phonenumber',
+                    expiry_time= (datetime.datetime.now() + datetime.timedelta(minutes=15))
+                )
+                
+                #commit changes
+                db.session.add(new_code)
+                db.session.commit()
+                
+                #get ud from the database
+                code = CodeModel.query.filter_by(user_id = g.user.id, field = "Phonenumber").filter(CodeModel.expiry_time > datetime.datetime.now()).first()
+                ud = code.code
+
+                SendSms(
+                    message = render_template('verification_code.txt',code=ud),
+                    phoneNumber = request.args.get('phonenumber')
+                )
+
+                respObj = {
+                    'status' : 'Success',
+                    'message' : 'verification code sent.'
+                }
+
+                return Response(json.dumps(respObj), mimetype='application/json',status=200)
+            else:
+                respObj = {
+                    'status' : 'success',
+                    'message' : 'Verification code already sent.'
+                }
+
+                return Response(json.dumps(respObj), mimetype='application/json',status=200)
+
+        except Exception as e:
+            respObj = {
+                'status' : 'failed',
+                'message' : 'An error occured while handling this request. Please try again later.'
+            }
+            return Response(json.dumps(respObj), mimetype='application/json',status=400)
+       
     
 
     

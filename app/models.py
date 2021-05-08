@@ -1,3 +1,4 @@
+from enum import unique
 import random, string
 from app import db
 from sqlalchemy import text, ForeignKey
@@ -75,7 +76,7 @@ class UserModel(db.Model):
     first_name = db.Column(db.String(50), nullable=False)
     last_name = db.Column(db.String(50), nullable=False)
     password = db.Column(db.String(200),nullable=False)
-    email = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(100), nullable=False, unique=True)
     role = db.Column(db.String(10), nullable=False, server_default='Customer')
     outlet_id = db.Column(db.String(20),ForeignKey('outlet.id'),nullable=False)
     created_on = db.Column(db.DateTime, server_default=text("CURRENT_TIMESTAMP"))

@@ -35,6 +35,4 @@ jwt = JWTManager(app)
 #init Api
 api = Api(app)
 
-
-
 initialize_routes(api)
