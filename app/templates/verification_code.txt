@@ -1,0 +1,3 @@
+Your bid_app Verification code is:
+{{ code }} .
+It will expire in 15 minutes.
